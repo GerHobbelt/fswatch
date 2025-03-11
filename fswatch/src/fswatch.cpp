@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2021 Enrico M. Crisostomo
+ * Copyright (c) 2014-2025 Enrico M. Crisostomo
  *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License as published by the Free Software
@@ -137,7 +137,7 @@ static void list_monitor_types(std::ostream& stream)
 static void print_version(std::ostream& stream)
 {
   stream << PACKAGE_STRING << "\n";
-  stream << "Copyright (C) 2013-2021 Enrico M. Crisostomo <enrico.m.crisostomo@gmail.com>.\n";
+  stream << "Copyright (C) 2013-2025 Enrico M. Crisostomo <enrico.m.crisostomo@gmail.com>.\n";
   stream << _("License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>.\n");
   stream << _("This is free software: you are free to change and redistribute it.\n");
   stream << _("There is NO WARRANTY, to the extent permitted by law.\n");
@@ -172,7 +172,7 @@ static void usage(std::ostream& stream)
   stream << " -i, --include=REGEX   " << _("Include paths matching REGEX.\n");
   stream << " -I, --insensitive     " << _("Use case insensitive regular expressions.\n");
   stream << " -l, --latency=DOUBLE  " << _("Set the latency.\n");
-  #if defined(HAVE_FSEVENTS_FSEVENTSTREAMSETDISPATCHQUEUE)
+  #ifdef HAVE_MACOS_GE_10_5
   stream << "     --no-defer        " << _("Set the no defer flag in the monitor.\n");
   #endif
   stream << " -L, --follow-links    " << _("Follow symbolic links.\n");
@@ -452,7 +452,7 @@ static void start_monitor(int argc, char **argv, int optind)
 
   for (auto i = optind; i < argc; ++i)
   {
-    std::string path = std::filesystem::canonical(argv[i]).string();
+    std::string path = std::filesystem::absolute(argv[i]).string();
 
     FSW_ELOGF(_("Adding path: %s\n"), path.c_str());
 

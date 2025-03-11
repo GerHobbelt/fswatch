@@ -1,6 +1,28 @@
 NEWS
 ****
 
+New in 1.19.0-develop:
+
+  * Issue 335: v. 1.18.0: build error: 'kFSEventStreamCreateFlagFileEvents' was
+    not declared in this scope.
+
+New in 1.18.2:
+
+  * Added event flag CloseWrite: file open for write has been closed. 
+
+  * kqueue_monitor: added support for CloseWrite, adding support for events of
+    type NOTE_CLOSE_WRITE.
+
+  * inotify_monitor: added support for CloseWrite, adding support for events of
+    type IN_CLOSE_WRITE.
+
+  * Issue 337: fswatch exits on non-existing paths.
+
+New in 1.18.1:
+
+  * Issue 333: Fix: Handle non-ASCII characters in file paths to prevent
+    segmentation faults in FSEvents callback.
+
 New in 1.18.0:
 
   * The C++17 standard has been adopted: code has been rewritten and simplified
