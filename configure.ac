@@ -95,11 +95,11 @@ AM_CONDITIONAL([HAVE_MAKEINFO], [test -n "${MAKEINFO_PROG}"])
 
 # Initialize gettext.
 AM_GNU_GETTEXT([external])
-AM_GNU_GETTEXT_VERSION([0.19.4])
+AM_GNU_GETTEXT_VERSION([0.22.5])
 AM_CONDITIONAL([USE_NLS], [test "x${USE_NLS}" = "xyes"])
 
 # Configure C++ compiler
-AX_CXX_COMPILE_STDCXX_11
+AX_CXX_COMPILE_STDCXX_17
 AX_CXXFLAGS_WARN_ALL
 
 # Checks for libraries.
@@ -274,8 +274,8 @@ AS_VAR_IF([use_docker], [yes],
     AX_GIT_CURRENT_BRANCH
     AC_CONFIG_FILES([docker/alpine/Dockerfile])
     AC_CONFIG_FILES([docker/alpine-no-gettext/Dockerfile])
-    AC_CONFIG_FILES([docker/debian9/Dockerfile])
     AC_CONFIG_FILES([docker/debian10/Dockerfile])
+    AC_CONFIG_FILES([docker/debian11/Dockerfile])
     AC_CONFIG_FILES([docker/debian-stable/Dockerfile])
     AC_CONFIG_FILES([docker/debian-testing/Dockerfile])
   ],
