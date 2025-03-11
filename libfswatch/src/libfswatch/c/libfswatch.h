@@ -90,11 +90,11 @@ extern "C"
    * returns FSW_OK, otherwise the initialization routine failed and the library
    * should not be usable.
    */
-  FSW_STATUS fsw_init_library();
+  FSW_STATUS fsw_init_library(void);
 
   /**
    * This function creates a new monitor session using the specified monitor
-   * and returns an handle to it.  This function is the `libfswatch` API entry
+   * and returns a handle to it.  This function is the `libfswatch` API entry
    * point.
    *
    * @see cmonitor.h for a list of all the available monitors.
@@ -195,12 +195,12 @@ extern "C"
   /**
    * Gets the last error code.
    */
-  FSW_STATUS fsw_last_error();
+  FSW_STATUS fsw_last_error(void);
 
   /**
    * Check whether the verbose mode is active.
    */
-  bool fsw_is_verbose();
+  bool fsw_is_verbose(void);
 
   /**
    * Set the verbose mode.
