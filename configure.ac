@@ -95,7 +95,7 @@ AM_CONDITIONAL([HAVE_MAKEINFO], [test -n "${MAKEINFO_PROG}"])
 
 # Initialize gettext.
 AM_GNU_GETTEXT([external])
-AM_GNU_GETTEXT_VERSION([0.22.5])
+AM_GNU_GETTEXT_VERSION([0.21])
 AM_CONDITIONAL([USE_NLS], [test "x${USE_NLS}" = "xyes"])
 
 # Configure C++ compiler
@@ -103,7 +103,6 @@ AX_CXX_COMPILE_STDCXX([17], [noext], [mandatory])
 AX_CXXFLAGS_WARN_ALL
 
 # Checks for libraries.
-AC_SEARCH_LIBS([pthread_create], [pthread])
 
 # Check for optional header files.
 AC_CHECK_HEADERS([getopt.h])
