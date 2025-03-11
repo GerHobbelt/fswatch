@@ -41,9 +41,11 @@ Table of Contents
 libfswatch
 ----------
 
-`fswatch` is a frontend of `libfswatch`, a library with C, C++ and [Go](https://github.com/dunglas/go-fswatch) binding.  More
-information on `libfswatch` can be found [here][README.libfswatch.md]. 
+`fswatch` is a frontend of `libfswatch`, a library with C, C++ and
+[Go][go.binding] bindings.  More information on `libfswatch` can be found
+[here][README.libfswatch.md].
 
+[go.binding]: https://github.com/dunglas/go-fswatch 
 [README.libfswatch.md]: README.libfswatch.md
 
 Features
@@ -160,12 +162,14 @@ and the `INSTALL` file.
 
 A developer who wishes to modify `fswatch` should get the sources (either from a
 source tarball or cloning the repository) and have the GNU Build System
-installed on their machine.  Please read `README.gnu-build-system` to get further
-details about how to bootstrap `fswatch` from sources on your machine.
+installed on their machine.  Please read `README.gnu-build-system` to get
+further details about how to bootstrap `fswatch` from sources on your machine.
 
-Getting a copy of the source repository is not recommended unless you are a
-developer, you have the GNU Build System installed on your machine, and you know
-how to bootstrap it on the sources.
+Getting a copy of the source repository is not recommended unless (i) you are a
+developer, (ii) you have the GNU Build System installed on your machine, and
+(iii) you know how to bootstrap it on the sources.
+
+CMake-support is unofficially offered as a courtesy.
 
 [release]: https://github.com/emcrisostomo/fswatch/releases
 
@@ -186,9 +190,13 @@ some platforms you may need to perform additional tasks before you can use
 
         $ ldconfig
 
-`fswatch` is a C++ program and a C++ compiler compliant with the C++11 standard
-is required to compile it.  Check your OS documentation for information about
-how to install the C++ toolchain and the C++ runtime.
+`fswatch` is a C++ program and a C++ compiler compliant with the C++ standard
+currently used is required.
+
+As of version 1.17.1 included, `fswatch` has required a C++11-compliant
+compiler.  Subsequent versions require a C++17-compliant compiler.  Check your
+OS documentation for information about how to install the C++ toolchain and the
+C++ runtime.
 
 No other software packages or dependencies are required to configure and install
 `fswatch` but the aforementioned APIs used by the file system monitors.
@@ -301,7 +309,7 @@ v. 2.0.
 
 -----
 
-Copyright (c) 2013-2021 Enrico M. Crisostomo
+Copyright (c) 2013-2024 Enrico M. Crisostomo
 
 This program is free software; you can redistribute it and/or modify it under
 the terms of the GNU General Public License as published by the Free Software

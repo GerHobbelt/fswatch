@@ -1,6 +1,6 @@
 #                                               -*- Autoconf -*-
 #
-# Copyright (C) 2014-2022 Enrico M. Crisostomo
+# Copyright (C) 2014-2024 Enrico M. Crisostomo
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -16,12 +16,12 @@
 #
 # Process this file with autoconf to produce a configure script.
 #
-dnl Copyright (C) 2014-2022 Enrico M. Crisostomo
+dnl Copyright (C) 2014-2024 Enrico M. Crisostomo
 AC_PREREQ([2.69])
 m4_include([m4/fswatch_version.m4])
 m4_include([m4/libfswatch_version.m4])
 AC_INIT([fswatch], LIBFSWATCH_VERSION, [enrico.m.crisostomo@gmail.com], [], [https://github.com/emcrisostomo/fswatch])
-AC_COPYRIGHT([2013-2022 (C) Enrico M. Crisostomo])
+AC_COPYRIGHT([2013-2024 (C) Enrico M. Crisostomo])
 AC_REVISION([$Revision: LIBFSWATCH_REVISION$])
 AC_CONFIG_SRCDIR([fswatch/src/fswatch.cpp])
 AC_CONFIG_AUX_DIR([config])
@@ -99,14 +99,13 @@ AM_GNU_GETTEXT_VERSION([0.22.5])
 AM_CONDITIONAL([USE_NLS], [test "x${USE_NLS}" = "xyes"])
 
 # Configure C++ compiler
-AX_CXX_COMPILE_STDCXX_17
+AX_CXX_COMPILE_STDCXX([17], [noext], [mandatory])
 AX_CXXFLAGS_WARN_ALL
 
 # Checks for libraries.
 AC_SEARCH_LIBS([pthread_create], [pthread])
 
 # Check for optional header files.
-AC_CHECK_HEADERS([unordered_map unordered_set])
 AC_CHECK_HEADERS([getopt.h])
 
 # Check for optional header files required to support OS-specific monitors
@@ -247,23 +246,6 @@ AC_CHECK_MEMBERS([struct stat.st_mtimespec],
 
 # Checks for library functions.
 AC_FUNC_LSTAT_FOLLOWS_SLASHED_SYMLINK
-
-# Check if realpath is available: if it is not and the host OS is Windows, then
-# build its implementation, otherwise fail
-AC_CHECK_FUNCS([realpath], [AS_VAR_SET([HAVE_REALPATH], ["yes"])], [AS_VAR_SET([HAVE_REALPATH], ["no"])])
-AS_VAR_IF([HAVE_REALPATH],
-  ["no"],
-  [AS_VAR_IF([WINDOWS_AVAILABLE],
-    ["yes"],
-    [dnl
-      AS_VAR_SET([BUILD_WIN_REALPATH], ["yes"])
-    ],
-    [AC_MSG_ERROR([The realpath function cannot be found.])])
-  ]
-)
-
-AM_CONDITIONAL([BUILD_WIN_REALPATH], [test "x${BUILD_WIN_REALPATH}" = "xyes"])
-AS_VAR_IF([HAVE_REALPATH], ["yes"], [AC_DEFINE([HAVE_REALPATH], [1], [Realpath present.])])
 
 # Check for optional library functions.
 AS_VAR_IF([ac_cv_header_getopt_h], ["yes"], [AC_CHECK_FUNCS([getopt_long])])
