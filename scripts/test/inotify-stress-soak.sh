@@ -1,5 +1,6 @@
+#!/bin/sh
 #
-# Copyright (c) 2014-2026 Enrico M. Crisostomo
+# Copyright (c) 2026 Enrico M. Crisostomo
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -12,6 +13,20 @@
 #
 # You should have received a copy of the GNU General Public License along with
 # this program.  If not, see <http://www.gnu.org/licenses/>.
-#
-m4_define([FSWATCH_VERSION], [1.20.0])
-m4_define([FSWATCH_REVISION], [1])
+
+set -eu
+
+BUILD_DIR=${BUILD_DIR:-build-inotify-soak}
+ITERATIONS=${ITERATIONS:-50}
+JOBS=${JOBS:-2}
+export CCACHE_DISABLE=${CCACHE_DISABLE:-1}
+
+cmake -S . -B "${BUILD_DIR}" -DBUILD_TESTING=ON
+cmake --build "${BUILD_DIR}" -j "${JOBS}"
+
+i=1
+while [ "${i}" -le "${ITERATIONS}" ]; do
+  printf 'inotify stress soak iteration %s/%s\n' "${i}" "${ITERATIONS}"
+  ctest --test-dir "${BUILD_DIR}" -L inotify --output-on-failure
+  i=$((i + 1))
+done
