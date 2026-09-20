@@ -26,6 +26,14 @@ if (BUILD_TESTING)
     find_program(SH_EXECUTABLE sh)
     find_program(GIT_EXECUTABLE git)
 
+    add_executable(filter_mode_test filter_mode_test.cpp)
+    target_include_directories(filter_mode_test PRIVATE ../.. .)
+    target_include_directories(filter_mode_test BEFORE PRIVATE ${PROJECT_BINARY_DIR})
+    target_link_libraries(filter_mode_test PUBLIC libfswatch)
+    add_test(NAME filter_mode_test COMMAND filter_mode_test)
+    set_tests_properties(filter_mode_test PROPERTIES
+            LABELS "unit;filtering")
+
     if (HAVE_INOTIFY_MONITOR)
         add_executable(inotify_stop_latency_test inotify_stop_latency_test.cpp)
         target_include_directories(inotify_stop_latency_test PRIVATE ../.. .)
@@ -111,6 +119,33 @@ if (BUILD_TESTING)
                     LABELS "integration;inotify"
                     TIMEOUT 25)
 
+            add_test(NAME inotify_filter_root_path
+                    COMMAND ${SH_EXECUTABLE}
+                            ${PROJECT_SOURCE_DIR}/test/filter_root_path.sh
+                            $<TARGET_FILE:fswatch>
+                            inotify_monitor)
+            set_tests_properties(inotify_filter_root_path PROPERTIES
+                    LABELS "integration;inotify;filtering"
+                    TIMEOUT 15)
+
+            add_test(NAME inotify_filter_mode
+                    COMMAND ${SH_EXECUTABLE}
+                            ${PROJECT_SOURCE_DIR}/test/filter_mode.sh
+                            $<TARGET_FILE:fswatch>
+                            inotify_monitor)
+            set_tests_properties(inotify_filter_mode PROPERTIES
+                    LABELS "integration;inotify;filtering"
+                    TIMEOUT 20)
+
+            add_test(NAME inotify_prune
+                    COMMAND ${SH_EXECUTABLE}
+                            ${PROJECT_SOURCE_DIR}/test/prune.sh
+                            $<TARGET_FILE:fswatch>
+                            inotify_monitor)
+            set_tests_properties(inotify_prune PROPERTIES
+                    LABELS "integration;inotify;filtering"
+                    TIMEOUT 15)
+
             if (GIT_EXECUTABLE)
                 add_test(NAME inotify_recursive_create
                         COMMAND ${SH_EXECUTABLE}
@@ -123,6 +158,35 @@ if (BUILD_TESTING)
             endif ()
         endif ()
 
+    endif ()
+
+    if (SH_EXECUTABLE)
+        add_test(NAME poll_filter_root_path
+                COMMAND ${SH_EXECUTABLE}
+                        ${PROJECT_SOURCE_DIR}/test/filter_root_path.sh
+                        $<TARGET_FILE:fswatch>
+                        poll_monitor)
+        set_tests_properties(poll_filter_root_path PROPERTIES
+                LABELS "integration;poll;filtering"
+                TIMEOUT 20)
+
+        add_test(NAME poll_filter_mode
+                COMMAND ${SH_EXECUTABLE}
+                        ${PROJECT_SOURCE_DIR}/test/filter_mode.sh
+                        $<TARGET_FILE:fswatch>
+                        poll_monitor)
+        set_tests_properties(poll_filter_mode PROPERTIES
+                LABELS "integration;poll;filtering"
+                TIMEOUT 25)
+
+        add_test(NAME poll_prune
+                COMMAND ${SH_EXECUTABLE}
+                        ${PROJECT_SOURCE_DIR}/test/prune.sh
+                        $<TARGET_FILE:fswatch>
+                        poll_monitor)
+        set_tests_properties(poll_prune PROPERTIES
+                LABELS "integration;poll;filtering"
+                TIMEOUT 20)
     endif ()
 
     if (CMAKE_SYSTEM_NAME STREQUAL "Linux" AND SH_EXECUTABLE AND HAVE_FANOTIFY)
@@ -152,6 +216,36 @@ if (BUILD_TESTING)
                 LABELS "integration;fanotify"
                 SKIP_RETURN_CODE 77
                 TIMEOUT 20)
+
+        add_test(NAME fanotify_filter_root_path
+                COMMAND ${SH_EXECUTABLE}
+                        ${PROJECT_SOURCE_DIR}/test/filter_root_path.sh
+                        $<TARGET_FILE:fswatch>
+                        fanotify_monitor)
+        set_tests_properties(fanotify_filter_root_path PROPERTIES
+                LABELS "integration;fanotify;filtering"
+                SKIP_RETURN_CODE 77
+                TIMEOUT 20)
+
+        add_test(NAME fanotify_filter_mode
+                COMMAND ${SH_EXECUTABLE}
+                        ${PROJECT_SOURCE_DIR}/test/filter_mode.sh
+                        $<TARGET_FILE:fswatch>
+                        fanotify_monitor)
+        set_tests_properties(fanotify_filter_mode PROPERTIES
+                LABELS "integration;fanotify;filtering"
+                SKIP_RETURN_CODE 77
+                TIMEOUT 25)
+
+        add_test(NAME fanotify_prune
+                COMMAND ${SH_EXECUTABLE}
+                        ${PROJECT_SOURCE_DIR}/test/prune.sh
+                        $<TARGET_FILE:fswatch>
+                        fanotify_monitor)
+        set_tests_properties(fanotify_prune PROPERTIES
+                LABELS "integration;fanotify;filtering"
+                SKIP_RETURN_CODE 77
+                TIMEOUT 20)
     endif ()
 
     if (APPLE)
@@ -168,5 +262,27 @@ if (BUILD_TESTING)
         target_include_directories(fsevents_cf_paths_test PRIVATE ../.. .)
         target_link_libraries(fsevents_cf_paths_test PUBLIC libfswatch ${CORESERVICES_LIBRARY})
         add_test(NAME fsevents_cf_paths_test COMMAND fsevents_cf_paths_test)
+
+        if (SH_EXECUTABLE)
+            add_test(NAME fsevents_filter_root_path
+                    COMMAND ${SH_EXECUTABLE}
+                            ${PROJECT_SOURCE_DIR}/test/filter_root_path.sh
+                            $<TARGET_FILE:fswatch>
+                            fsevents_monitor)
+            set_tests_properties(fsevents_filter_root_path PROPERTIES
+                    LABELS "integration;fsevents;filtering"
+                    SKIP_RETURN_CODE 77
+                    TIMEOUT 20)
+
+            add_test(NAME fsevents_filter_mode
+                    COMMAND ${SH_EXECUTABLE}
+                            ${PROJECT_SOURCE_DIR}/test/filter_mode.sh
+                            $<TARGET_FILE:fswatch>
+                            fsevents_monitor)
+            set_tests_properties(fsevents_filter_mode PROPERTIES
+                    LABELS "integration;fsevents;filtering"
+                    SKIP_RETURN_CODE 77
+                    TIMEOUT 25)
+        endif ()
     endif ()
 endif ()

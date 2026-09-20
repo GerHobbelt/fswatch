@@ -466,6 +466,13 @@ If you prefer using another replacement string, substitute @code{@{@}}
 with another string of your choice.
 @end itemize
 
+On BSD-derived systems, including macOS, the system @command{xargs}
+implementation may limit the size of replacement strings used by
+@option{-I}.  If commands fail when processing long path names, consider
+using a different consumer that reads @command{fswatch}'s NUL-separated
+records directly, or install GNU findutils and use @command{gxargs}
+instead of @command{xargs}.
+
 @section Detecting the Boundaries of a Batch of Changes
 @cpindex batch marker
 @opindex batch-marker@r{, detail}
@@ -755,6 +762,12 @@ Use extended regular expressions.
 
 Load filters from the specified @command{@var{file}}.
 
+@opsummary{filter-mode}
+@item --filter-mode
+
+Set the path filter evaluation mode.  Supported modes are
+@samp{legacy} and @samp{conjunctive}.
+
 @opsummary{fire-idle-events}
 @item --fire-idle-events
 
@@ -851,6 +864,12 @@ Exit @command{fswatch} after the first set of events is received.
 @itemx -0
 
 Use the @acronym{ASCII} @samp{NUL} (@samp{\0}) as record separator.
+
+@opsummary{prune}
+@item --prune
+
+Do not descend into directories matching @command{@var{regex}} during
+recursive traversal.  This option can be specified multiple times.
 
 @opsummary{recursive}
 @item --recursive
@@ -1231,7 +1250,12 @@ Two types of filters are available:
 
 As their name indicates, they are used to include and exclude paths
 from the monitored object list and from resulting events.
-@command{fswatch} processes filters this way:
+@command{fswatch} supports two path filter evaluation modes:
+@samp{legacy} and @samp{conjunctive}.
+
+@samp{legacy} is the default mode and preserves the historical
+include-overrides-exclude behavior.  In this mode, @command{fswatch}
+processes filters this way:
 
 @itemize
 @item
@@ -1259,6 +1283,61 @@ Inclusion filters may override any other exclusion filter.
 @item
 The order in the definition of filters in the command line has no effect.
 @end itemize
+
+@samp{conjunctive} mode is enabled with
+@option{--filter-mode=conjunctive}.  It treats inclusion filters as the
+candidate set and exclusion filters as subtractions from that set:
+
+@itemize
+@item
+If no inclusion filters are specified, all paths are candidates.
+
+@item
+If at least one inclusion filter is specified, a path must match an
+inclusion filter to be a candidate.
+
+@item
+Any matching exclusion filter rejects the path.
+@end itemize
+
+@noindent
+Said another way, conjunctive mode accepts paths matching this
+expression:
+
+@example
+(no includes OR matches include) AND NOT matches exclude
+@end example
+
+For example, the following command reports changes to C source files
+except editor lock files:
+
+@example
+$ fswatch --filter-mode=conjunctive -i '\.c$' -e '/lock-[^/]+\.c$' .
+@end example
+
+@subsection Pruning Recursive Traversal
+@cpindex path filter, pruning
+@opindex prune@r{, detail}
+The @option{--prune} option defines regular expressions that stop
+recursive traversal from descending into matching directories.  This is
+different from @option{--exclude}: excluded paths are filtered from
+the resulting events, while pruned directories and their descendants
+are not scanned or monitored by recursive monitors that traverse
+directory trees.
+
+Prune expressions use the same case-sensitivity and extended-regular
+expression settings as normal path filters.
+
+Pruning is applied only to non-root directories.  A command-line root
+path remains eligible for monitoring even if it matches a prune
+expression.
+
+For example, the following command recursively watches @file{/home/me}
+without descending into hidden directories:
+
+@example
+$ fswatch -r --prune '/\.[^/]+$' /home/me
+@end example
 
 @subsection Filter Modifiers
 @cpindex path filter, modifier
@@ -1829,6 +1908,30 @@ Linux kernels.
 
 @subsection Peculiarities
 @cpindex monitor, inotify, peculiarities
+@subsubsection Event Attribution
+The inotify @acronym{API} provides no information about the user or
+process that triggered an event.  As a result, it is difficult for an
+application to distinguish events it triggers itself from events
+triggered by other processes.
+
+Inotify reports only events triggered through the filesystem @acronym{API},
+so it does not catch remote events that occur on network filesystems.
+Furthermore, various pseudo-filesystems such as @file{/proc}, @file{/sys},
+and @file{/dev/pts} are not monitorable with inotify.
+
+The inotify @acronym{API} does not report file accesses or modifications
+that may occur because of @code{mmap(2)}, @code{msync(2)}, and
+@code{munmap(2)}.
+
+The inotify @acronym{API} identifies affected files by filename.  However,
+by the time an application processes an inotify event, the filename may
+already have been deleted or renamed.
+
+The inotify @acronym{API} identifies events via watch descriptors.  It is
+the application's responsibility to cache a mapping, if one is needed,
+between watch descriptors and pathnames.  Be aware that directory renamings
+may affect multiple cached pathnames.
+
 @subsubsection Queue Overflow
 @cpindex monitor, inotify, queue overflow
 @cpindex monitor, inotify, overflow
@@ -1860,6 +1963,30 @@ One generated by the parent directory of the file that has changed.
 @item
 One generated by the file that has changed.
 @end itemize
+
+@subsubsection Directory Trees and Mounts
+Inotify monitoring of directories is not recursive: to monitor
+subdirectories under a directory, additional watches must be created.
+This can take a significant amount of time for large directory trees.
+
+If monitoring an entire directory subtree, and a new subdirectory is
+created in that tree or an existing directory is renamed into that tree,
+be aware that by the time you create a watch for the new subdirectory,
+new files and subdirectories may already exist inside the subdirectory.
+Therefore, you may want to scan the contents of the subdirectory
+immediately after adding the watch, and, if desired, recursively add
+watches for any subdirectories that it contains.
+
+Note that the event queue can overflow.  In this case, events are lost.
+Robust applications should handle the possibility of lost events
+gracefully.  For example, it may be necessary to rebuild part or all of
+the application cache.
+
+If a filesystem is mounted on top of a monitored directory, no event is
+generated, and no events are generated for objects immediately under the
+new mount point.  If the filesystem is subsequently unmounted, events
+will subsequently be generated for the directory and the objects it
+contains.
 
 @section The fanotify Monitor
 @anchor{The fanotify Monitor}

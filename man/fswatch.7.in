@@ -117,6 +117,16 @@ Multiple exclude filters can be specified using this option multiple times.  See
 for further information.
 .It Fl E, -extended
 Use extended regular expressions.
+.It Fl -filter-mode Ar mode
+Set the path filter evaluation mode.
+.Ar mode
+can be
+.Ql legacy
+or
+.Ql conjunctive .
+See
+.Sx FILTERING PATHS
+for further information.
 .It Fl f, -format-time Ar format
 Print the event time using the specified
 .Ar format .
@@ -168,6 +178,12 @@ across different versions of macOS.  As a consequence, the use of numeric values
 is discouraged.
 .It Fl o, -one-per-batch
 Print a single message with the number of change events.
+.It Fl -prune Ar regexp
+Do not descend into directories matching
+.Ar regexp
+during recursive traversal.  This option may be specified multiple times.  See
+.Sx FILTERING PATHS
+for further information.
 .It Fl r, -recursive
 Watch subdirectories recursively.  This option may not be supported on all
 systems.
@@ -275,11 +291,46 @@ handle the overflow by emitting proper notifications.  However, the odds of
 observing a queue overflow on a default configured mainstream GNU/Linux
 distribution is very low.
 .Pp
+The inotify API provides no information about the user or process that
+triggered an event, so applications cannot easily distinguish events they
+trigger themselves from events triggered by other processes.  Inotify reports
+only events triggered through the filesystem API, so it does not catch remote
+events that occur on network filesystems.  Furthermore, pseudo-filesystems such
+as \fI/proc\fR, \fI/sys\fR, and \fI/dev/pts\fR are not monitorable with
+inotify.
+.Pp
+The inotify API does not report file accesses or modifications that may occur
+because of \fBmmap(2)\fR, \fBmsync(2)\fR, and \fBmunmap(2)\fR.  It identifies
+affected files by filename, but by the time the application processes the
+event, the filename may already have been deleted or renamed.  Events are
+identified via watch descriptors, so applications must cache a mapping, if one
+is needed, between watch descriptors and pathnames.  Be aware that directory
+renamings may affect multiple cached pathnames.
+.Pp
 The inotify API sends events for the direct child elements of a watched
 directory and it scales pretty well with the number of watched items.  For this
 reason, depending on the number of files to watch, it may sometimes be
 preferable to watch a common parent directory and filter received events rather
-than adding a huge number of file watches.
+than adding a huge number of file watches.  Inotify monitoring of directories
+is not recursive, so additional watches must be created for subdirectories.
+That can take a significant amount of time for large directory trees.
+.Pp
+If monitoring an entire directory subtree, and a new subdirectory is created in
+that tree or an existing directory is renamed into that tree, be aware that by
+the time you create a watch for the new subdirectory, new files and
+subdirectories may already exist inside the subdirectory.  Therefore, you may
+want to scan the contents of the subdirectory immediately after adding the
+watch, and, if desired, recursively add watches for any subdirectories that it
+contains.
+.Pp
+The event queue can overflow.  In this case, events are lost.  Robust
+applications should handle the possibility of lost events gracefully.  For
+example, it may be necessary to rebuild part or all of the application cache.
+.Pp
+If a filesystem is mounted on top of a monitored directory, no event is
+generated, and no events are generated for objects immediately under the new
+mount point.  If the filesystem is subsequently unmounted, events will
+subsequently be generated for the directory and the objects it contains.
 .Ss The fanotify Monitor
 The
 .Em fanotify monitor ,
@@ -394,9 +445,17 @@ degradation that may result from frequent disk access.
 .El
 .Sh FILTERING PATHS
 Received events can be filtered by path using regular expressions.  Regular
-expressions can be used to include or exclude matching paths.  The user can
-specify multiple filter expression in any order and filters are processed this
-way:
+expressions can be used to include or exclude matching paths.
+.Nm
+supports two path filter evaluation modes:
+.Ql legacy
+and
+.Ql conjunctive .
+.Pp
+The default
+.Ql legacy
+mode preserves historical behavior.  The user can specify multiple filter
+expressions in any order and filters are processed this way:
 .Bl -tag -width indent
 .It -
 If a path matches an including filter, the path is accepted no matter
@@ -416,6 +475,53 @@ Inclusion filters may override any other exclusion filter.
 .It -
 The order in the definition of filters in the command line has no effect.
 .El
+.Pp
+The
+.Ql conjunctive
+mode is enabled with
+.Fl -filter-mode=conjunctive .
+It treats inclusion filters as the candidate set and exclusion filters as
+subtractions from that set:
+.Bl -tag -width indent
+.It -
+If no inclusion filters are specified, all paths are candidates.
+.It -
+If at least one inclusion filter is specified, a path must match an inclusion
+filter to be a candidate.
+.It -
+Any matching exclusion filter rejects the path.
+.El
+.Pp
+Said another way, conjunctive mode accepts paths matching this expression:
+.Pp
+.Dl (no includes OR matches include) AND NOT matches exclude
+.Pp
+For example, the following command reports changes to C source files except
+editor lock files:
+.Pp
+.Dl $ fswatch --filter-mode=conjunctive -i '\e.c$' -e '/lock-[^/]+\.c$' .
+
+.Ss Pruning Recursive Traversal
+The
+.Fl -prune Ar regexp
+option defines regular expressions that stop recursive traversal from
+descending into matching directories.  This is different from
+.Fl -exclude :
+excluded paths are filtered from the resulting events, while pruned directories
+and their descendants are not scanned or monitored by recursive monitors that
+traverse directory trees.
+.Pp
+Prune expressions use the same case-sensitivity and extended-regular-expression
+settings as normal path filters.
+.Pp
+Pruning is applied only to non-root directories.  A command-line root path
+remains eligible for monitoring even if it matches a prune expression.
+.Pp
+For example, the following command recursively watches
+.Pa /home/me
+without descending into hidden directories:
+.Pp
+.Dl $ fswatch -r --prune '/\e.[^/]+$' /home/me
 
 .Pp
 Other options govern how regular expressions are interpreted:
@@ -559,6 +665,18 @@ replacement string, substitute
 .Em {}
 with yours.
 .El
+.Pp
+On BSD-derived systems, including macOS, the system
+.Em xargs
+implementation may limit the size of replacement strings used by
+.Fl I .
+If commands fail when processing long path names, consider using a different
+consumer that reads
+.Nm Ns 's
+NUL-separated records directly, or install GNU findutils and use
+.Em gxargs
+instead of
+.Em xargs .
 .Ss Bubbling Events
 An often requested feature is being able to receive a single event "per batch",
 instead of receiving multiple events.  This use case is implemented by the

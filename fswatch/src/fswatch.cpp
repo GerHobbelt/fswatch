@@ -86,8 +86,10 @@ static const unsigned int TIME_FORMAT_BUFF_SIZE = 128;
 
 static monitor *active_monitor = nullptr;
 static std::vector<monitor_filter> filters;
+static std::vector<monitor_filter> prune_filters;
 static std::vector<fsw_event_type_filter> event_filters;
 static std::vector<std::string> filter_files;
+static fsw_filter_mode filter_mode = fsw_filter_mode::filter_mode_legacy;
 static bool _0flag = false;
 static bool _1flag = false;
 static bool aflag = false;
@@ -131,6 +133,8 @@ static const int OPT_MONITOR_PROPERTY = 133;
 static const int OPT_FIRE_IDLE_EVENTS = 134;
 static const int OPT_FILTER_FROM = 135;
 static const int OPT_NO_DEFER = 136;
+static const int OPT_PRUNE = 137;
+static const int OPT_FILTER_MODE = 138;
 
 static void list_monitor_types(std::ostream& stream)
 {
@@ -171,6 +175,8 @@ static void usage(std::ostream& stream)
   stream << " -E, --extended        " << _("Use extended regular expressions.\n");
   stream << "     --filter-from=FILE\n";
   stream << "                       " << _("Load filters from file.") << "\n";
+  stream << "     --filter-mode=MODE\n";
+  stream << "                       " << _("Set filter mode: legacy or conjunctive.") << "\n";
   stream << "     --format=FORMAT   " << _("Use the specified record format.") << "\n";
   stream << "                       " << _("Directives: %p path, %f flags, %t time, %c correlation, %K process id kind, %P process id.") << "\n";
   stream << " -f, --format-time     " << _("Print the event time using the specified format.\n");
@@ -189,6 +195,7 @@ static void usage(std::ostream& stream)
   stream << "                       " << _("Define the specified property.\n");
   stream << " -n, --numeric         " << _("Print a numeric event mask.\n");
   stream << " -o, --one-per-batch   " << _("Print a single message with the number of change events.\n");
+  stream << "     --prune=REGEX     " << _("Do not descend into directories matching REGEX.\n");
   stream << " -r, --recursive       " << _("Recurse subdirectories.\n");
   stream << " -t, --timestamp       " << _("Print the event timestamp.\n");
   stream << " -u, --utc-time        " << _("Print the event time as UTC time.\n");
@@ -297,6 +304,26 @@ static bool parse_event_filter(const char *pOptarg)
     std::cerr << ex.what() << std::endl;
     return false;
   }
+}
+
+static bool parse_filter_mode(const char *pOptarg)
+{
+  const std::string mode(pOptarg);
+
+  if (mode == "legacy")
+  {
+    filter_mode = fsw_filter_mode::filter_mode_legacy;
+    return true;
+  }
+
+  if (mode == "conjunctive")
+  {
+    filter_mode = fsw_filter_mode::filter_mode_conjunctive;
+    return true;
+  }
+
+  std::cerr << _("Invalid filter mode: ") << pOptarg << std::endl;
+  return false;
 }
 
 static bool validate_latency(double latency, const char *pOptarg)
@@ -499,6 +526,12 @@ static void start_monitor(int argc, char **argv, int argIndex)
     filter.extended = Eflag;
   }
 
+  for (auto& filter : prune_filters)
+  {
+    filter.case_sensitive = !Iflag;
+    filter.extended = Eflag;
+  }
+
   // Load filters from the specified files.
   for (const auto& filter_file : filter_files)
   {
@@ -526,7 +559,9 @@ static void start_monitor(int argc, char **argv, int argIndex)
   active_monitor->set_recursive(rflag);
   active_monitor->set_directory_only(dflag);
   active_monitor->set_event_type_filters(event_filters);
+  active_monitor->set_filter_mode(filter_mode);
   active_monitor->set_filters(filters);
+  active_monitor->set_prune_filters(prune_filters);
   active_monitor->set_follow_symlinks(Lflag);
   active_monitor->set_watch_access(aflag);
   active_monitor->set_bubble_events(bflag);
@@ -552,6 +587,7 @@ static void parse_opts(int argc, char **argv)
     {"event-flag-separator", required_argument, nullptr,       OPT_EVENT_FLAG_SEPARATOR},
     {"exclude",              required_argument, nullptr,       'e'},
     {"extended",             no_argument,       nullptr,       'E'},
+    {"filter-mode",          required_argument, nullptr,       OPT_FILTER_MODE},
     {"filter-from",          required_argument, nullptr,       OPT_FILTER_FROM},
     {"fire-idle-events",     no_argument,       nullptr,       OPT_FIRE_IDLE_EVENTS},
     {"follow-links",         no_argument,       nullptr,       'L'},
@@ -571,6 +607,7 @@ static void parse_opts(int argc, char **argv)
     {"one-per-batch",        no_argument,       nullptr,       'o'},
     {"one-event",            no_argument,       nullptr,       '1'},
     {"print0",               no_argument,       nullptr,       '0'},
+    {"prune",                required_argument, nullptr,       OPT_PRUNE},
     {"recursive",            no_argument,       nullptr,       'r'},
     {"timestamp",            no_argument,       nullptr,       't'},
     {"utc-time",             no_argument,       nullptr,       'u'},
@@ -705,7 +742,7 @@ static void parse_opts(int argc, char **argv)
     case OPT_EVENT_TYPE:
       if (!parse_event_filter(optarg))
       {
-        exit(FSW_ERR_UNKNOWN_VALUE);
+        exit(FSW_EXIT_OPT);
       }
       break;
 
@@ -723,6 +760,17 @@ static void parse_opts(int argc, char **argv)
 
     case OPT_FILTER_FROM:
       filter_files.emplace_back(optarg);
+      break;
+
+    case OPT_FILTER_MODE:
+      if (!parse_filter_mode(optarg))
+      {
+        exit(FSW_EXIT_OPT);
+      }
+      break;
+
+    case OPT_PRUNE:
+      prune_filters.push_back({optarg, fsw_filter_type::filter_exclude});
       break;
 
     case OPT_NO_DEFER:
