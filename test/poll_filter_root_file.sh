@@ -1,5 +1,6 @@
+#!/bin/sh
 #
-# Copyright (c) 2014-2026 Enrico M. Crisostomo
+# Copyright (c) 2026 Enrico M. Crisostomo
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -12,6 +13,8 @@
 #
 # You should have received a copy of the GNU General Public License along with
 # this program.  If not, see <http://www.gnu.org/licenses/>.
-#
-m4_define([FSWATCH_VERSION], [1.22.0-develop])
-m4_define([FSWATCH_REVISION], [1])
+
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+exec "${SCRIPT_DIR}/filter_root_file.sh" "${1:-${FSWATCH:-}}" poll_monitor
