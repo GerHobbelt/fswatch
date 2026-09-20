@@ -14,6 +14,9 @@
 # this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
+include(CMakePackageConfigHelpers)
+include(GNUInstallDirs)
+
 # Define symbols to conditionally define FSEvents flags
 if(APPLE)
     if (${CMAKE_SYSTEM_VERSION} VERSION_GREATER_EQUAL "9.0")
@@ -212,6 +215,7 @@ add_definitions(-DHAVE_LIBFSWATCH_CONFIG_H)
 
 add_library(libfswatch ${LIB_SOURCE_FILES} ${LIBFSWATCH_HEADER_FILES})
 set_target_properties(libfswatch PROPERTIES PREFIX "")
+target_compile_features(libfswatch PUBLIC cxx_std_17)
 
 # check for gettext and libintl
 if (USE_NLS)
@@ -220,17 +224,72 @@ if (USE_NLS)
     endif ()
 endif ()
 
-target_include_directories(libfswatch PUBLIC src/libfswatch)
-target_include_directories(libfswatch PUBLIC src)
-target_include_directories(libfswatch PUBLIC ${Intl_INCLUDE_DIRS})
+target_include_directories(libfswatch PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/libfswatch>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
+        $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+        $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/libfswatch>
+        ${Intl_INCLUDE_DIRS})
 target_include_directories(libfswatch PRIVATE ${PROJECT_BINARY_DIR})
 target_include_directories(libfswatch PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 target_link_libraries(libfswatch PRIVATE ${EXTRA_LIBS})
 
-install(TARGETS libfswatch LIBRARY DESTINATION lib)
-# TODO: should migrate to target_source(file_set) to install headers
-install(DIRECTORY src/libfswatch
-    DESTINATION include
-    FILES_MATCHING
-    PATTERN "*.hpp"
-    PATTERN "*.h")
+set(LIBFSWATCH_INSTALL_CMAKEDIR "${CMAKE_INSTALL_LIBDIR}/cmake/libfswatch")
+
+install(TARGETS libfswatch
+    EXPORT libfswatchTargets
+    ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
+    LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
+    RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}")
+
+set(LIBFSWATCH_INSTALL_HEADER_FILES ${LIBFSWATCH_HEADER_FILES})
+list(REMOVE_ITEM LIBFSWATCH_INSTALL_HEADER_FILES
+    src/libfswatch/gettext.h
+    src/libfswatch/gettext_defs.h
+    "${CMAKE_CURRENT_BINARY_DIR}/libfswatch_config.h")
+foreach (header_file IN LISTS LIBFSWATCH_INSTALL_HEADER_FILES)
+    get_filename_component(header_dir "${header_file}" DIRECTORY)
+    string(REGEX REPLACE "^src/libfswatch/?" "" header_install_subdir "${header_dir}")
+    install(FILES "${header_file}"
+        DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/libfswatch/${header_install_subdir}")
+endforeach ()
+install(FILES "${CMAKE_CURRENT_BINARY_DIR}/libfswatch_config.h"
+    DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/libfswatch")
+
+configure_package_config_file(
+    cmake/libfswatchConfig.cmake.in
+    "${CMAKE_CURRENT_BINARY_DIR}/libfswatchConfig.cmake"
+    INSTALL_DESTINATION "${LIBFSWATCH_INSTALL_CMAKEDIR}")
+write_basic_package_version_file(
+    "${CMAKE_CURRENT_BINARY_DIR}/libfswatchConfigVersion.cmake"
+    VERSION "${PROJECT_VERSION}"
+    COMPATIBILITY SameMajorVersion)
+install(EXPORT libfswatchTargets
+    NAMESPACE libfswatch::
+    DESTINATION "${LIBFSWATCH_INSTALL_CMAKEDIR}")
+install(FILES
+    "${CMAKE_CURRENT_BINARY_DIR}/libfswatchConfig.cmake"
+    "${CMAKE_CURRENT_BINARY_DIR}/libfswatchConfigVersion.cmake"
+    DESTINATION "${LIBFSWATCH_INSTALL_CMAKEDIR}")
+
+if (BUILD_TESTING)
+    add_test(NAME libfswatch_package_consumer
+        COMMAND ${CMAKE_COMMAND}
+            -DTEST_BUILD_DIR=${PROJECT_BINARY_DIR}
+            -DTEST_WORK_DIR=${PROJECT_BINARY_DIR}/test/libfswatch_package_consumer
+            -DTEST_CONFIG=$<CONFIG>
+            -DTEST_GENERATOR=${CMAKE_GENERATOR}
+            -DTEST_GENERATOR_PLATFORM=${CMAKE_GENERATOR_PLATFORM}
+            -DTEST_GENERATOR_TOOLSET=${CMAKE_GENERATOR_TOOLSET}
+            -DTEST_CXX_COMPILER=${CMAKE_CXX_COMPILER}
+            -DTEST_HAVE_FANOTIFY=${HAVE_FANOTIFY}
+            -DTEST_HAVE_FSEVENTS=${HAVE_FSEVENTS_FSEVENTSTREAMSETDISPATCHQUEUE}
+            -DTEST_HAVE_INOTIFY_MONITOR=${HAVE_INOTIFY_MONITOR}
+            -DTEST_HAVE_PORT_H=${HAVE_PORT_H}
+            -DTEST_HAVE_SYS_EVENT_H=${HAVE_SYS_EVENT_H}
+            -DTEST_HAVE_WINDOWS=${HAVE_WINDOWS}
+            -P ${PROJECT_SOURCE_DIR}/test/cmake/libfswatch_package_consumer.cmake)
+    set_tests_properties(libfswatch_package_consumer PROPERTIES
+        LABELS "package;cmake"
+        TIMEOUT 120)
+endif ()

@@ -1,6 +1,19 @@
 NEWS
 ****
 
+New in 1.21.0-develop:
+
+  * Issue 305: Install CMake package configuration files and exported targets
+    for libfswatch so CMake consumers can use find_package(libfswatch CONFIG).
+
+
+New in 1.20.1:
+
+  * Correct the 1.20.0 release notes to document PR 368, Issue 367: the Linux
+    inotify monitor now uses an epoll/eventfd wait loop, and building it now
+    requires epoll, eventfd, and inotify_init1 support.
+
+
 New in 1.20.0:
 
   * Issue 365: Add a Linux fanotify monitor and generic event process
@@ -11,6 +24,10 @@ New in 1.20.0:
 
   * Issue 365: Add the fsw_cevent_v2 C callback API for correlation and
     process attribution metadata without changing the existing fsw_cevent ABI.
+
+  * PR 368, Issue 367: Refactor the Linux inotify monitor to use an
+    epoll/eventfd wait loop.  Building the inotify monitor now requires epoll,
+    eventfd, and inotify_init1 support.
 
   * Fix CoreFoundation path ownership in the macOS FSEvents monitor.
 
